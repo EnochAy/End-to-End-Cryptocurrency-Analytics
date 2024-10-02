@@ -36,3 +36,6 @@ plt.figure(figsize=(10, 6))
 sns.histplot(df['price'], bins=50)
 plt.title('Cryptocurrency Price Distribution')
 plt.show()
+
+
+
