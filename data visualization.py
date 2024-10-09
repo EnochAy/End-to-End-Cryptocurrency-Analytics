@@ -9,11 +9,10 @@ Tableau or Power BI can be used for creating static or streaming dashboards.
 Example using Streamlit:
  """
 
-pip install streamlit #bash code
+#pip install streamlit #bash code
 
 
 #In your script (app.py):
-
 
 import streamlit as st
 import pandas as pd
@@ -32,7 +31,7 @@ st.line_chart(df['price'])
 
 
 #Run the dashboard with:
-streamlit run app.py
+#streamlit run app.py
 
 
 
