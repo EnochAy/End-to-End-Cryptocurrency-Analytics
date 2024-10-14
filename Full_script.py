@@ -38,9 +38,8 @@ Machine Learning:
 A Linear Regression model predicts future cryptocurrency prices.
 Integrates predictions into the dashboard for real-time forecasting.
 """
-
-import requests
 import sqlite3
+import requests
 import time
 import json
 from datetime import datetime
@@ -61,7 +60,10 @@ headers = {
 conn = sqlite3.connect('crypto_data.db')
 c = conn.cursor()
 
-# Create table if it doesn't exist
+# Drop table if it exists (to recreate with correct schema)
+c.execute('DROP TABLE IF EXISTS crypto_data')
+
+# Create table with the 'timestamp' column
 c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
     id INTEGER PRIMARY KEY,
     name TEXT,
@@ -79,7 +81,7 @@ def fetch_and_store_data():
         response = requests.get(url, headers=headers, params=parameters)
         data = response.json()
         
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
         
         for entry in data['data']:
             c.execute('INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
@@ -96,6 +98,15 @@ def fetch_and_store_data():
 while True:
     fetch_and_store_data()
     time.sleep(600)  # Sleep for 10 minutes
+
+
+# Add timestamp column if it doesn't exist
+try:
+    c.execute('ALTER TABLE crypto_data ADD COLUMN timestamp TEXT')
+    conn.commit()
+except sqlite3.OperationalError as e:
+    print(f"Error adding timestamp column: {e}")
+
 
 
 """
