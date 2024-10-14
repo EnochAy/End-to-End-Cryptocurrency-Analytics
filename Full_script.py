@@ -111,7 +111,8 @@ except sqlite3.OperationalError as e:
 
 """
 Step 2: Visualization Dashboard (using Plotly Dash)
-Next, we'll use Plotly Dash to create an interactive dashboard for visualizing cryptocurrency data. This dashboard will show real-time price trends and historical data.
+Next, I'll use Plotly Dash to create an interactive dashboard for visualizing cryptocurrency data. 
+This dashboard will show real-time price trends and historical data.
 
 Install dash, dash-bootstrap-components, and plotly via pip:
 """
