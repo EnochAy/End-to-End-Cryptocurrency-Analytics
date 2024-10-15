@@ -231,3 +231,20 @@ def predict_price(selected_crypto):
     
     return f"Predicted price for {selected_crypto} in 1 hour: ${predicted_price:.2f}"
 
+
+
+"""
+Cryptocurrency Market Monitoring and Insights
+Use Case: Provide real-time or near real-time insights on market trends, price movements, and trading volumes 
+of various cryptocurrencies.
+Application: This project can be used by traders, investors, or portfolio managers to track specific 
+cryptocurrencies, analyze market volatility, and identify profitable trading opportunities.
+This will be acheived by building dashboards that show live price updates, top gainers/losers, 
+and market cap changes, helping users make informed investment decisions.
+"""
+
+"""
+cd C:\Users\Ayomide Fadeyi\Documents\Message\Data Analytics Training\End-to-End Cryptocurrency Analytics
+
+python full_script.py
+"""
