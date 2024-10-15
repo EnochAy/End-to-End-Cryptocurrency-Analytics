@@ -1,6 +1,6 @@
 """
-a complete end-to-end cryptocurrency analytics project incorporating data pipeline, real-time storage, 
-data visualization dashboard, and machine learning for price prediction. We'll break the project down into 
+A complete end-to-end cryptocurrency analytics project incorporating data pipeline, real-time storage, 
+data visualization dashboard, and machine learning for price prediction. I'll break the project down into 
 the following sections:
 
 Data Pipeline for Real-Time and Historical Data
@@ -16,6 +16,7 @@ Machine Learning Integration
 
 A basic price prediction model using historical data (using a simple Linear Regression model as an example).
 Incorporating the model into the dashboard for prediction insights.
+
 Step 1: Data Pipeline for Real-Time and Historical Data
 You will build a pipeline to fetch, store, and update cryptocurrency data periodically. 
 This part sets up the data engineering foundation for your project.
