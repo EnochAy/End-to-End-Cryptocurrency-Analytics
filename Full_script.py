@@ -18,7 +18,7 @@ headers = {
 # Connect to MySQL Database (historical data)
 conn = mysql.connector.connect(
     host="localhost",          # Your MySQL host (e.g., localhost or IP)
-    user="root",       # Your MySQL username
+    user="33060",       # Your MySQL username
     password="enochay88",   # Your MySQL password
     database="crypto_db"        # Your database name
 )
