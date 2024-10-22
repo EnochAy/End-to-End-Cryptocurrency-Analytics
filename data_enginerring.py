@@ -5,11 +5,10 @@ and future reference.
 
 Steps:
 
-Option 1: Store as a CSV or JSON File Save the fetched data locally as a CSV or JSON file. For example:
-"""
+Option 1: Store as a CSV or JSON File Save the fetched data locally as a CSV or JSON file.
 
 
-"""
+
 import csv
 
 # Save as CSV
@@ -23,48 +22,17 @@ with open('crypto_data.csv', 'w', newline='') as file:
 
 Option 2: Store in a Database (MySQL, PostgreSQL, etc.)
 
-Create a database table to store the cryptocurrency data.
-Use libraries like SQLAlchemy or PyMySQL to insert the data into the database.
-Example for storing in SQLite:
+Create a database table to store the cryptocurrency data into MySQL to insert the data into the database.
 
-import sqlite3
-
-conn = sqlite3.connect('crypto_data.db')
-c = conn.cursor()
-
-# Create table
-c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    symbol TEXT,
-    price REAL,
-    volume_24h REAL,
-    market_cap REAL
-)''')
-
-
-# Insert data into table
-for entry in data['data']:
-    c.execute('INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap) VALUES (?, ?, ?, ?, ?)',
-              (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
-               entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap']))
-
-conn.commit()
-conn.close()
-
-
+For storing in MySQL:
 """
 
-
-
-
-
+import mysql.connector
 import requests
-import json
-import csv
-import sqlite3
+import time
+from datetime import datetime
 
-# Step 1: Fetch data from CoinMarketCap API
+# CoinMarketCap API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {
     'start': '1',
@@ -73,62 +41,54 @@ parameters = {
 }
 headers = {
     'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': 'your_api_key_here',  # Replace with your API key
+    'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
 }
 
-try:
-    # Send GET request to the CoinMarketCap API
-    response = requests.get(url, headers=headers, params=parameters)
-    
-    # Parse response data into JSON format
-    data = response.json()
-    
-    # Step 2: Store the data in a CSV file
-    filename = 'crypto_data.csv'
+# Connect to MySQL Database (historical data)
+conn = mysql.connector.connect(
+    host="localhost",          # Your MySQL host (e.g., localhost or IP)
+    user="root",       # Your MySQL username
+    password="EnochAy@88",   # Your MySQL password
+    database="crypto_db"        # Your database name
+)
+c = conn.cursor()
+
+# Drop table if it exists (to recreate with correct schema)
+c.execute('DROP TABLE IF EXISTS crypto_data')
+
+# Create table with the 'timestamp' column
+c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    symbol VARCHAR(255),
+    price DECIMAL(18, 8),
+    volume_24h DECIMAL(18, 2),
+    market_cap DECIMAL(18, 2),
+    timestamp TIMESTAMP
+)''')
+conn.commit()
+
+# Function to fetch and store data in the database
+def fetch_and_store_data():
     try:
-        with open(filename, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(data['data'][0].keys())  # Write the header (column names)
-
-            for entry in data['data']:
-                writer.writerow(entry.values())
-
-        print(f"Data successfully saved to {filename}")
-
-    except Exception as e:
-        print(f"Error occurred while saving data to CSV: {e}")
-
-    # Step 3: Store the data in SQLite Database
-    try:
-        conn = sqlite3.connect('crypto_data.db')  # Establish connection to SQLite database
-        c = conn.cursor()
-
-        # Create table if it doesn't exist
-        c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
-            id INTEGER PRIMARY KEY,
-            name TEXT,
-            symbol TEXT,
-            price REAL,
-            volume_24h REAL,
-            market_cap REAL
-        )''')
-
-        # Insert data into the table
+        response = requests.get(url, headers=headers, params=parameters)
+        data = response.json()
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
+        
         for entry in data['data']:
-            c.execute('INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap) VALUES (?, ?, ?, ?, ?)',
+            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) 
+                         VALUES (%s, %s, %s, %s, %s, %s)''',
                       (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
-                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap']))
-
-        # Commit transaction
+                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
+        
         conn.commit()
-        print("Data successfully stored in the SQLite database.")
+        print(f"Data successfully stored at {timestamp}")
 
-    except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from CoinMarketCap API: {e}")
 
-    finally:
-        if conn:
-            conn.close()  # Ensure connection is closed after use
-
-except requests.exceptions.RequestException as e:
-    print(f"Error fetching data from CoinMarketCap API: {e}")
+# Fetch data every 10 minutes for real-time updates
+while True:
+    fetch_and_store_data()
+    time.sleep(600)  # Sleep for 10 minutes
