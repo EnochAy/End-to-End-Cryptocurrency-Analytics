@@ -124,18 +124,24 @@ Install dash, dash-bootstrap-components, and plotly via pip:
 #1. pip install dash dash-bootstrap-components plotly
 #pip install dash dash-bootstrap
 
-#2.Create the Dash app:
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
-import sqlite3
+import mysql.connector
+import dash_bootstrap_components as dbc  # Ensure you import dbc for the Bootstrap theme
 
-# Connect to SQLite and load data
+# Connect to MySQL and load data
 def load_data():
-    conn = sqlite3.connect('crypto_data.db')
-    df = pd.read_sql_query("SELECT * FROM crypto_data", conn)
+    conn = mysql.connector.connect(
+        host='localhost',
+        user='root',  # Replace with your MySQL username
+        password='EnochAy@88',  # Replace with your MySQL password
+        database='crypto_db'  # Replace with your MySQL database name
+    )
+    query = "SELECT * FROM crypto_data"
+    df = pd.read_sql(query, conn)
     conn.close()
     return df
 
@@ -175,6 +181,7 @@ def update_graph(selected_crypto, n):
 # Run the app
 if __name__ == '__main__':
     app.run_server(debug=True)
+
 
 
 
