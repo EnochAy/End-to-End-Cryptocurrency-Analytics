@@ -1,3 +1,52 @@
+
+
+"""
+Project Overview:
+Data Pipeline:
+
+Fetches and stores real-time cryptocurrency data from the CoinMarketCap API every 10 minutes.
+Stores data in an SQLite database for historical analysis.
+Dashboard:
+
+Displays real-time and historical price trends using Plotly Dash.
+Updates dynamically every 10 minutes.
+Allows the user to select different cryptocurrencies for analysis.
+Machine Learning:
+
+A Linear Regression model predicts future cryptocurrency prices.
+Integrates predictions into the dashboard for real-time forecasting.
+"""
+
+
+"""
+A complete end-to-end cryptocurrency analytics project incorporating data pipeline, real-time storage, 
+data visualization dashboard, and machine learning for price prediction. I'll break the project down into 
+the following sections:
+
+Data Pipeline for Real-Time and Historical Data
+
+Fetching real-time cryptocurrency data from CoinMarketCap API.
+Storing the data in a database (SQLite).
+Storing both real-time and historical data for deeper analysis.
+Visualization Dashboard (using Plotly Dash)
+
+Creating an interactive dashboard to explore the data dynamically.
+Showing real-time prices, trends, and historical data.
+Machine Learning Integration
+
+A basic price prediction model using historical data (using a simple Linear Regression model as an example).
+Incorporating the model into the dashboard for prediction insights.
+"""
+
+
+"""
+Step 1: Data Pipeline for Real-Time and Historical Data
+You will build a pipeline to fetch, store, and update cryptocurrency data periodically. 
+This part sets up the data engineering foundation for your project.
+"""
+
+
+
 import mysql.connector
 import requests
 import time
@@ -63,127 +112,6 @@ def fetch_and_store_data():
 while True:
     fetch_and_store_data()
     time.sleep(600)  # Sleep for 10 minutes
-
-
-
-"""
-A complete end-to-end cryptocurrency analytics project incorporating data pipeline, real-time storage, 
-data visualization dashboard, and machine learning for price prediction. I'll break the project down into 
-the following sections:
-
-Data Pipeline for Real-Time and Historical Data
-
-Fetching real-time cryptocurrency data from CoinMarketCap API.
-Storing the data in a database (SQLite).
-Storing both real-time and historical data for deeper analysis.
-Visualization Dashboard (using Plotly Dash)
-
-Creating an interactive dashboard to explore the data dynamically.
-Showing real-time prices, trends, and historical data.
-Machine Learning Integration
-
-A basic price prediction model using historical data (using a simple Linear Regression model as an example).
-Incorporating the model into the dashboard for prediction insights.
-
-Step 1: Data Pipeline for Real-Time and Historical Data
-You will build a pipeline to fetch, store, and update cryptocurrency data periodically. 
-This part sets up the data engineering foundation for your project.
-"""
-
-
-"""
-Project Overview:
-Data Pipeline:
-
-Fetches and stores real-time cryptocurrency data from the CoinMarketCap API every 10 minutes.
-Stores data in an SQLite database for historical analysis.
-Dashboard:
-
-Displays real-time and historical price trends using Plotly Dash.
-Updates dynamically every 10 minutes.
-Allows the user to select different cryptocurrencies for analysis.
-Machine Learning:
-
-A Linear Regression model predicts future cryptocurrency prices.
-Integrates predictions into the dashboard for real-time forecasting.
-"""
-
-
-
-import sqlite3
-import requests
-import time
-import json
-from datetime import datetime
-
-# CoinMarketCap API Configuration
-url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
-parameters = {
-    'start': '1',
-    'limit': '5000',
-    'convert': 'USD'
-}
-headers = {
-    'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
-}
-
-# Connect to SQLite Database (historical data)
-conn = sqlite3.connect('crypto_data.db')
-c = conn.cursor()
-
-# Drop table if it exists (to recreate with correct schema)
-c.execute('DROP TABLE IF EXISTS crypto_data')
-
-# Create table with the 'timestamp' column
-c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    symbol TEXT,
-    price REAL,
-    volume_24h REAL,
-    market_cap REAL,
-    timestamp TEXT
-)''')
-conn.commit()
-
-# Function to fetch and store data in the database
-def fetch_and_store_data():
-    try:
-        response = requests.get(url, headers=headers, params=parameters)
-        data = response.json()
-        
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
-        
-        for entry in data['data']:
-            c.execute('INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-                      (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
-                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
-        
-        conn.commit()
-        print(f"Data successfully stored at {timestamp}")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching data from CoinMarketCap API: {e}")
-
-# Fetch data every 10 minutes for real-time updates
-while True:
-    fetch_and_store_data()
-    time.sleep(600)  # Sleep for 10 minutes
-
-
-
-
-
-
-
-# Add timestamp column if it doesn't exist
-try:
-    c.execute('ALTER TABLE crypto_data ADD COLUMN timestamp TEXT')
-    conn.commit()
-except sqlite3.OperationalError as e:
-    print(f"Error adding timestamp column: {e}")
-
 
 
 """
