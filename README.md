@@ -84,11 +84,11 @@ To initialize the SQLite database, no manual setup is required. The Python scrip
 
 # Usage
 
-1. Run the Data Pipeline: The following script fetches real-time data from CoinMarketCap and stores it in the SQLite database.
+1. Run the Data Pipeline: The following script fetches real-time data from CoinMarketCap and stores it in the MySQL database.
 python full_script.py
 The script collects data every 10 minutes, storing cryptocurrency data and timestamps for historical tracking.
 
-2. View the Data: The data is stored in an SQLite database (crypto_data.db). You can query it manually using SQLite, or you can visualize it using Python libraries like pandas or dash.
+2. View the Data: The data is stored in an SQLite database (crypto_data.db). You can query it manually using MySQL, or you can visualize it using Python libraries like pandas or dash.
 
 3. Machine Learning: You can extend the pipeline by training machine learning models (e.g., price prediction, trend classification). Modify the ML section of the code and integrate your models.
 
