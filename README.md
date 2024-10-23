@@ -22,14 +22,14 @@ This project is an end-to-end data analytics pipeline for cryptocurrency data, l
 This project provides a comprehensive analytics pipeline for analyzing and visualizing cryptocurrency market trends. The key components of this pipeline include:
 
 1. Data Collection: Fetches real-time cryptocurrency data from the CoinMarketCap API.
-2. Data Storage: Stores both real-time and historical data in a local SQLite database, allowing for longitudinal analysis.
+2. Data Storage: Stores both real-time and historical data in a local MySQL database, allowing for longitudinal analysis.
 3. Machine Learning: Integrates machine learning models to predict future cryptocurrency prices and market movements.
 4. Dashboard: Builds a dynamic dashboard using Plotly Dash. Either Power BI or Tableau will be used later to visualize real-time trends, predictions, and market insights.
 
 # Features
 
 1. Fetches up-to-date cryptocurrency data from CoinMarketCap API.
-2. Stores real-time and historical data in a local SQLite database.
+2. Stores real-time and historical data in a local MySQL database.
 3. Implements a data pipeline to ensure continuous data collection and storage.
 4. Applies machine learning models for price prediction and market analysis.
 5. Provides real-time data visualization and interactive dashboard.
