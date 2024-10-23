@@ -91,4 +91,4 @@ def fetch_and_store_data():
 # Fetch data every 10 minutes for real-time updates
 while True:
     fetch_and_store_data()
-    time.sleep(600)  # Sleep for 10 minutes
+    time.sleep(3600)  # Sleep for 1 hour
