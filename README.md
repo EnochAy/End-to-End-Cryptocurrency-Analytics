@@ -45,8 +45,8 @@ This project provides a comprehensive analytics pipeline for analyzing and visua
     - scikit-learn for machine learning models
     - plotly or Dash for interactive data visualization
     - pandas for data manipulation
-4. Database: SQLite (can be expanded to use PostgreSQL or MySQL later)
-5. Visualization: Plotly, Dash, or Power BI/Tableau for dashboard creation
+4. Database: MySQL (can be expanded to use PostgreSQL or SQLite later)
+5. Visualization: Plotly, Dash (Power BI/Tableau later) for dashboard creation
 
 # Setup Instructions
 
