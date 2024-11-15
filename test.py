@@ -10,6 +10,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 import dash_bootstrap_components as dbc
 
+
+
 # Connect to MySQL and load data
 def load_data():
     conn = mysql.connector.connect(
