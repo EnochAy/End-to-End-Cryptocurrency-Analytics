@@ -5,38 +5,56 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import mysql.connector
-import os
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.arima.model import ARIMA
-#from prophet import Prophet
-import tensorflow as tf
-#from tensorflow.keras.models import Sequential
-#from tensorflow.keras.layers import LSTM, Dense
+import xgboost as xgb
 import dash_bootstrap_components as dbc
 from datetime import datetime
-from cachetools import cached, TTLCache
+import requests
 
-# Load environment variables for security
-DB_USER = os.getenv('DB_USER', 'host')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'EnochAy@88')
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_NAME = os.getenv('DB_NAME', 'crypto_db')
+# API Configuration
+url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
+headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'your_api_key_here'}
 
-# Initialize Dash app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# Connect to MySQL and create table if not exists
+def init_db():
+    conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255),
+                    symbol VARCHAR(255),
+                    price DECIMAL(18, 8),
+                    volume_24h DECIMAL(18, 2),
+                    market_cap DECIMAL(18, 2),
+                    timestamp TIMESTAMP)''')
+    conn.commit()
+    conn.close()
 
-# Cache for database queries (TTL: 10 minutes)
-cache = TTLCache(maxsize=10, ttl=600)
+# Fetch and store data
+def fetch_and_store_data():
+    conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
+    c = conn.cursor()
+    try:
+        response = requests.get(url, headers=headers, params=parameters)
+        data = response.json()
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        for entry in data['data']:
+            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp)
+                         VALUES (%s, %s, %s, %s, %s, %s)''',
+                      (entry['name'], entry['symbol'], entry['quote']['USD']['price'],
+                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
+        conn.commit()
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+    finally:
+        conn.close()
 
-# Connect to MySQL and load data
-@cached(cache)
+# Load data
 def load_data():
-    conn = mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME
-    )
+    conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
     query = "SELECT * FROM crypto_data"
     df = pd.read_sql(query, conn)
     conn.close()
@@ -51,65 +69,37 @@ def feature_engineering(df):
     df.fillna(0, inplace=True)
     return df
 
-# ARIMA Model
+# Train ARIMA model
 def train_arima(df):
     model = ARIMA(df['price'], order=(5, 1, 0))
-    model_fit = model.fit()
-    return model_fit
+    arima_model = model.fit()
+    return arima_model
 
-# Prophet Model
-def train_prophet(df):
-    prophet_df = df[['timestamp', 'price']].rename(columns={'timestamp': 'ds', 'price': 'y'})
-    model = Prophet()
-    model.fit(prophet_df)
+# Train XGBoost model
+def train_xgboost(df):
+    df['time_since'] = (df['timestamp'] - df['timestamp'].min()).dt.total_seconds()
+    X = df[['time_since', 'market_cap', 'volume_market_cap_ratio', 'price_change_24h']]
+    y = df['price']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = xgb.XGBRegressor(objective='reg:squarederror')
+    model.fit(X_train, y_train)
     return model
 
-# LSTM Model
-def train_lstm(df):
-    data = df[['price']].values
-    scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(data)
-
-    # Prepare data for LSTM
-    X, y = [], []
-    for i in range(60, len(scaled_data)):
-        X.append(scaled_data[i-60:i])
-        y.append(scaled_data[i])
-    X, y = np.array(X), np.array(y)
-
-    # Build LSTM model
-    model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], 1)))
-    model.add(LSTM(units=50))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-
-    # Train the model
-    model.fit(X, y, epochs=10, batch_size=32)
-    return model, scaler
+# Initialize Dash app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # App layout
 app.layout = html.Div([
-    html.H1("Advanced Cryptocurrency Dashboard"),
+    html.H1("Cryptocurrency Dashboard"),
     dcc.Dropdown(id='crypto-dropdown',
-                 options=[
-                     {'label': 'Bitcoin', 'value': 'Bitcoin'},
-                     {'label': 'Ethereum', 'value': 'Ethereum'}
-                 ],
+                 options=[{'label': 'Bitcoin', 'value': 'Bitcoin'}, {'label': 'Ethereum', 'value': 'Ethereum'}],
                  value='Bitcoin'),
     dcc.Graph(id='price-graph'),
-    dcc.RadioItems(id='model-selector',
-                   options=[
-                       {'label': 'ARIMA', 'value': 'ARIMA'},
-                       {'label': 'Prophet', 'value': 'Prophet'},
-                       {'label': 'LSTM', 'value': 'LSTM'}
-                   ],
-                   value='ARIMA'),
-    html.Div(id='prediction-output', style={'fontSize': 24, 'marginTop': 20}),
-    dcc.Interval(id='interval-component', interval=3600 * 1000, n_intervals=0)
+    dcc.Interval(id='interval-component', interval=600 * 1000, n_intervals=0),
+    html.Div(id='prediction-output', style={'fontSize': 24, 'marginTop': 20})
 ])
 
-# Update Graph
+# Update graph
 @app.callback(
     Output('price-graph', 'figure'),
     [Input('crypto-dropdown', 'value'), Input('interval-component', 'n_intervals')]
@@ -118,41 +108,37 @@ def update_graph(selected_crypto, n):
     df = load_data()
     df = df[df['name'] == selected_crypto]
     df = feature_engineering(df)
-
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['timestamp'], y=df['price'], mode='lines', name='Price'))
-    fig.update_layout(title=f'{selected_crypto} Price Over Time', xaxis_title='Time', yaxis_title='Price (USD)')
-
+    fig.add_trace(go.Scatter(x=df['timestamp'], y=df['price'], mode='lines+markers', name='Price'))
+    fig.update_layout(title=f'Price of {selected_crypto} Over Time', xaxis_title='Time', yaxis_title='Price (USD)')
     return fig
 
-# Prediction Callback
+# Make predictions
 @app.callback(
     Output('prediction-output', 'children'),
-    [Input('crypto-dropdown', 'value'), Input('model-selector', 'value')]
+    [Input('crypto-dropdown', 'value')]
 )
-def predict_price(selected_crypto, model_choice):
+def predict_price(selected_crypto):
     df = load_data()
     df = df[df['name'] == selected_crypto]
     df = feature_engineering(df)
-
-    if model_choice == 'ARIMA':
-        model = train_arima(df)
-        forecast = model.forecast(steps=1)[0]
-    elif model_choice == 'Prophet':
-        model = train_prophet(df)
-        future = pd.DataFrame({'ds': [df['timestamp'].max() + pd.Timedelta(hours=1)]})
-        forecast = model.predict(future)['yhat'].values[0]
-    elif model_choice == 'LSTM':
-        model, scaler = train_lstm(df)
-        last_60 = df[['price']].values[-60:]
-        scaled_last_60 = scaler.transform(last_60)
-        X_test = np.expand_dims(scaled_last_60, axis=0)
-        forecast = scaler.inverse_transform(model.predict(X_test))[0][0]
-    else:
-        return "Invalid model selected."
-
-    return f"Predicted price for {selected_crypto} in 1 hour: ${forecast:.2f}"
+    
+    # ARIMA prediction
+    arima_model = train_arima(df)
+    arima_forecast = arima_model.forecast(steps=1)[0]
+    
+    # XGBoost prediction
+    xgboost_model = train_xgboost(df)
+    last_row = df.iloc[-1]
+    future_time = (pd.to_datetime(last_row['timestamp']) - df['timestamp'].min()).total_seconds() + 3600
+    x_input = np.array([[future_time, last_row['market_cap'], last_row['volume_market_cap_ratio'], last_row['price_change_24h']]])
+    xgboost_forecast = xgboost_model.predict(x_input)[0]
+    
+    return (f"ARIMA Predicted price for {selected_crypto} in 1 hour: ${arima_forecast:.2f}, "
+            f"XGBoost Predicted price: ${xgboost_forecast:.2f}")
 
 # Run the app
 if __name__ == '__main__':
+    init_db()
+    fetch_and_store_data()
     app.run_server(debug=True)
