@@ -44,7 +44,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Load data into DataFrame
-df = pd.read_csv('/mnt/data/crypto_data.csv')
+df = pd.read_csv('crypto_data.csv')
 
 # Data Cleaning & Preparation
 # Drop duplicate rows
