@@ -33,7 +33,7 @@ import seaborn as sns
 
 # Plot histogram of crypto prices
 plt.figure(figsize=(10, 6))
-sns.histplot(df['price'], bins=50)
+sns.histplot(df['Price'], bins=50)
 plt.title('Cryptocurrency Price Distribution')
 plt.show()
 
