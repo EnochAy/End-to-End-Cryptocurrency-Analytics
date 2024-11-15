@@ -8,10 +8,10 @@ import mysql.connector
 import os
 from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.arima.model import ARIMA
-from prophet import Prophet
+#from prophet import Prophet
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+#from tensorflow.keras.models import Sequential
+#from tensorflow.keras.layers import LSTM, Dense
 import dash_bootstrap_components as dbc
 from datetime import datetime
 from cachetools import cached, TTLCache
