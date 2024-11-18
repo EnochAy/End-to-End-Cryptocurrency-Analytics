@@ -12,11 +12,15 @@ import xgboost as xgb
 import dash_bootstrap_components as dbc
 from datetime import datetime
 import requests
+import time
 
 # API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
 headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'your_api_key_here'}
+
+# Cached API data
+api_cache = {'data': None, 'timestamp': None}
 
 # Connect to MySQL and create table if not exists
 def init_db():
@@ -37,9 +41,15 @@ def init_db():
     finally:
         conn.close()
 
-# Fetch and store data
+# Fetch and cache data from API
 def fetch_and_store_data():
+    global api_cache
     try:
+        current_time = time.time()
+        if api_cache['data'] and (current_time - api_cache['timestamp']) < 600:
+            print("Using cached API data.")
+            return
+
         conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
         c = conn.cursor()
         response = requests.get(url, headers=headers, params=parameters)
@@ -52,6 +62,7 @@ def fetch_and_store_data():
                       (entry['name'], entry['symbol'], entry['quote']['USD']['price'],
                        entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
         conn.commit()
+        api_cache = {'data': data, 'timestamp': current_time}
         print("Data fetched and stored successfully.")
     except Exception as e:
         print(f"Error fetching data: {e}")
@@ -102,6 +113,19 @@ def train_xgboost(df):
         print(f"Error training XGBoost model: {e}")
         return None
 
+# Pre-train models
+def initialize_models():
+    df = load_data()
+    if df.empty:
+        print("No data available for model training.")
+        return None, None
+    df = feature_engineering(df)
+    arima_model = train_arima(df)
+    xgboost_model = train_xgboost(df)
+    return arima_model, xgboost_model
+
+arima_model, xgboost_model = initialize_models()
+
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -141,43 +165,26 @@ def update_graph(selected_crypto, n):
 def predict_price(selected_crypto):
     df = load_data()
     df = df[df['name'] == selected_crypto]
-    if df.empty:
+    if df.empty or not arima_model or not xgboost_model:
         return "No data available for prediction."
 
     df = feature_engineering(df)
 
     # ARIMA prediction
-    arima_model = train_arima(df)
-    if arima_model:
-        arima_forecast = arima_model.forecast(steps=1)[0]
-    else:
-        arima_forecast = "N/A"
+    arima_forecast = arima_model.forecast(steps=1)[0] if arima_model else "N/A"
 
     # XGBoost prediction
-    xgboost_model = train_xgboost(df)
-    if xgboost_model:
-        last_row = df.iloc[-1]
-        future_time = (pd.to_datetime(last_row['timestamp']) - df['timestamp'].min()).total_seconds() + 3600
-        x_input = np.array([[future_time, last_row['market_cap'], last_row['volume_market_cap_ratio'], last_row['price_change_24h']]])
-        xgboost_forecast = xgboost_model.predict(x_input)[0]
-    else:
-        xgboost_forecast = "N/A"
+    last_row = df.iloc[-1]
+    future_time = (pd.to_datetime(last_row['timestamp']) - df['timestamp'].min()).total_seconds() + 3600
+    x_input = np.array([[future_time, last_row['market_cap'], last_row['volume_market_cap_ratio'], last_row['price_change_24h']]])
+    xgboost_forecast = xgboost_model.predict(x_input)[0] if xgboost_model else "N/A"
 
-    return (f"ARIMA Predicted price for {selected_crypto} in 1 hour: ${arima_forecast}, "
-            f"XGBoost Predicted price: ${xgboost_forecast}")
-
-
-
-
-
-
-# Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True)
-
+    return (f"ARIMA Predicted price for {selected_crypto} in 1 hour: ${arima_forecast:.2f}, "
+            f"XGBoost Predicted price: ${xgboost_forecast:.2f}")
 
 # Run the app
 if __name__ == '__main__':
     init_db()
     fetch_and_store_data()
     app.run_server(debug=True)
+    
