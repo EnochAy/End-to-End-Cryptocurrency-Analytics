@@ -181,9 +181,25 @@ def predict_price(selected_crypto):
     return f"ARIMA Predicted price: ${arima_forecast}, XGBoost Predicted price: ${xgboost_forecast}"
 
 # Main Execution
+"""
 if __name__ == '__main__':
     init_db()
     fetch_and_store_data()
     initialize_models()
     app.run_server(debug=True, port=8050)
+
+"""
+
+if __name__ == '__main__':
+    import threading
+
+    def init_and_train():
+        init_db()
+        fetch_and_store_data()
+        initialize_models()
+
+    # Run data initialization and model training in a separate thread
+    threading.Thread(target=init_and_train).start()
+    app.run_server(debug=True, port=8050)
+
 
