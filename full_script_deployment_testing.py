@@ -6,12 +6,14 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+from sqlalchemy import create_engine
 import pandas as pd
 import dash_bootstrap_components as dbc  # For Bootstrap theme
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+import threading
 
 # CoinMarketCap API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
@@ -25,7 +27,17 @@ headers = {
     'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
 }
 
-# Connect to MySQL Database (historical data)
+# Set up the connection using SQLAlchemy
+DATABASE_URI = "mysql+mysqlconnector://root:EnochAy@88@localhost/crypto_db"  # Modify this with your credentials
+engine = create_engine(DATABASE_URI)
+
+# Load data from MySQL using SQLAlchemy engine
+def load_data():
+    query = "SELECT * FROM crypto_data"
+    df = pd.read_sql(query, engine)  # This will use SQLAlchemy for the connection
+    return df
+
+# Drop table if it exists (to recreate with correct schema)
 conn = mysql.connector.connect(
     host="localhost",  # Your MySQL host (e.g., localhost or IP)
     user="root",  # Your MySQL username
@@ -33,11 +45,7 @@ conn = mysql.connector.connect(
     database="crypto_db"  # Your database name
 )
 c = conn.cursor()
-
-# Drop table if it exists (to recreate with correct schema)
 c.execute('DROP TABLE IF EXISTS crypto_data')
-
-# Create table with the 'timestamp' column
 c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
@@ -49,34 +57,34 @@ c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
 )''')
 conn.commit()
 
-# Function to fetch and store data in the database
+# Function to fetch and store data with retry logic
 def fetch_and_store_data():
-    try:
-        response = requests.get(url, headers=headers, params=parameters)
-        data = response.json()
-        
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
-        
-        for entry in data['data']:
-            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) 
-                         VALUES (%s, %s, %s, %s, %s, %s)''',
-                      (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
-                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
-        
-        conn.commit()
-        print(f"Data successfully stored at {timestamp}")
+    retries = 3  # Number of retries in case of failure
+    delay = 5  # Delay between retries in seconds
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, headers=headers, params=parameters)
+            response.raise_for_status()  # Raise an error for bad status codes
+            data = response.json()
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching data from CoinMarketCap API: {e}")
+            for entry in data['data']:
+                c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) 
+                             VALUES (%s, %s, %s, %s, %s, %s)''',
+                          (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
+                           entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
 
-# Function to load data from MySQL for Dash visualization
-def load_data():
-    query = "SELECT * FROM crypto_data"
-    df = pd.read_sql(query, conn)
-    return df
+            conn.commit()
+            print(f"Data successfully stored at {timestamp}")
+            break  # If the request is successful, break out of the retry loop
 
-df = load_data()
-print(df.head())  # Check the first few rows of data
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching data from CoinMarketCap API: {e}")
+            if attempt < retries - 1:  # If it's not the last retry attempt, wait before retrying
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                print("Max retries reached. Skipping this fetch.")
 
 # Machine Learning - Train a Linear Regression Model for Price Prediction
 def train_price_model():
@@ -87,11 +95,7 @@ def train_price_model():
         return None, None  # Return None if there's no data
     
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-
-    # Prepare the data for the model
     df['time_since'] = (df['timestamp'] - df['timestamp'].min()).dt.total_seconds()  # Convert time to numerical
-
-    # Feature and target variable
     X = df[['time_since']]
     y = df['price']
 
@@ -99,38 +103,26 @@ def train_price_model():
         print("Insufficient data for training the model.")
         return None, None  # Return None if there isn't enough data for training
 
-    # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     if len(X_train) == 0 or len(X_test) == 0:
         print("Split resulted in empty train or test set. Check data availability.")
         return None, None
 
-    # Scale the features
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Train the Linear Regression model
     model = LinearRegression()
     model.fit(X_train_scaled, y_train)
 
     return model, scaler
 
-# Load data and check if it's empty before training
-model, scaler = train_price_model()
-
-if model is not None:
-    print("Model trained successfully.")
-else:
-    print("Model training skipped due to insufficient data.")
-
-
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # App layout
-app.layout = html.Div([
+app.layout = html.Div([ 
     html.H1("Cryptocurrency Dashboard"),
     dcc.Dropdown(id='crypto-dropdown',
                  options=[
@@ -169,7 +161,9 @@ def predict_price(selected_crypto):
     df = load_data()
     df = df[df['name'] == selected_crypto]
 
-    # Use the trained model for prediction (adjust this for better models)
+    if model is None:
+        return "Model is not available for prediction."
+
     last_time = (pd.to_datetime(df['timestamp'].max()) - df['timestamp'].min()).total_seconds()
     future_time = last_time + 3600  # Predict one hour into the future
     future_time_scaled = scaler.transform(np.array([[future_time]]))
@@ -179,13 +173,17 @@ def predict_price(selected_crypto):
     return f"Predicted price for {selected_crypto} in 1 hour: ${predicted_price:.2f}"
 
 # Run the app in a separate thread to keep the server running continuously
-if __name__ == '__main__':
-    # Train the model once
-    model, scaler = train_price_model()
-    
-    # Fetch and store data every 10 minutes
+def fetch_data_periodically():
     while True:
         fetch_and_store_data()
         time.sleep(600)  # Fetch data every 10 minutes
 
+if __name__ == '__main__':
+    # Train the model once
+    model, scaler = train_price_model()
+    
+    # Start the data fetching in a separate thread
+    threading.Thread(target=fetch_data_periodically, daemon=True).start()
+
+    # Run the Dash app
     app.run_server(debug=True)
