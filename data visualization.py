@@ -28,15 +28,3 @@ st.write(df)
 
 # Plot price trend
 st.line_chart(df['price'])
-
-
-#Run the dashboard with:
-#streamlit run app.py
-
-
-
-"""
-Deployment
-Deploy your dashboard and machine learning models to a cloud service like Heroku, AWS, or Google Cloud for others to interact with.
-For machine learning, you can expose your model as a web API using Flask or FastAPI.
-"""
