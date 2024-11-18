@@ -166,6 +166,16 @@ def predict_price(selected_crypto):
     return (f"ARIMA Predicted price for {selected_crypto} in 1 hour: ${arima_forecast}, "
             f"XGBoost Predicted price: ${xgboost_forecast}")
 
+
+
+
+
+
+# Run the app
+if __name__ == '__main__':
+    app.run_server(debug=True)
+
+
 # Run the app
 if __name__ == '__main__':
     init_db()
