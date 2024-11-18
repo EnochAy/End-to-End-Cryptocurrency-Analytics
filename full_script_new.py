@@ -185,5 +185,5 @@ if __name__ == '__main__':
     init_db()
     fetch_and_store_data()
     initialize_models()
-    app.run_server(debug=True, port=8080)
+    app.run_server(debug=True, port=8050)
 
