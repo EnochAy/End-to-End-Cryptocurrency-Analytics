@@ -75,6 +75,9 @@ def load_data():
     df = pd.read_sql(query, conn)
     return df
 
+df = load_data()
+print(df.head())  # Check the first few rows of data
+
 # Machine Learning - Train a Linear Regression Model for Price Prediction
 def train_price_model():
     df = load_data()
