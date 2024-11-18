@@ -200,6 +200,8 @@ if __name__ == '__main__':
 
     # Run data initialization and model training in a separate thread
     threading.Thread(target=init_and_train).start()
+    print("Starting Dash server...")
     app.run_server(debug=True, port=8050)
+
 
 
