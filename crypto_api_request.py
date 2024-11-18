@@ -1,7 +1,9 @@
+import mysql.connector
 import requests
 import time
+import threading
+import pandas as pd
 from datetime import datetime
-import mysql.connector
 
 # CoinMarketCap API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
@@ -20,10 +22,8 @@ conn = mysql.connector.connect(
 )
 c = conn.cursor()
 
-# Drop table if it exists
+# Drop table if it exists and create a new table
 c.execute('DROP TABLE IF EXISTS crypto_data')
-
-# Create table
 c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
@@ -58,14 +58,46 @@ def fetch_and_store_data():
             break  # Exit the loop if successful
 
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching data: {e}")
+            print(f"Error fetching data from CoinMarketCap API: {e}")
             if attempt < retries - 1:
                 print(f"Retrying in {delay} seconds...")
                 time.sleep(delay)
             else:
                 print("Max retries reached. Skipping this fetch.")
 
-# Fetch data every hour
-while True:
-    fetch_and_store_data()
-    time.sleep(3600)
+# Function to periodically fetch data in a separate thread
+def fetch_data_periodically():
+    while True:
+        fetch_and_store_data()
+        time.sleep(3600)  # Fetch data every hour
+
+# Start the data fetching thread
+thread = threading.Thread(target=fetch_data_periodically, daemon=True)
+thread.start()
+
+# Data Analysis Option
+def load_data():
+    query = "SELECT * FROM crypto_data"
+    df = pd.read_sql(query, conn)
+    return df
+
+# Basic Data Analysis
+def analyze_data():
+    df = load_data()
+    if df.empty:
+        print("No data available for analysis.")
+        return
+
+    print("Summary Statistics:")
+    print(df.describe())
+
+    # Example: Show top 5 cryptocurrencies by market cap
+    top_5 = df.sort_values(by='market_cap', ascending=False).head(5)
+    print("\nTop 5 Cryptocurrencies by Market Cap:")
+    print(top_5[['name', 'symbol', 'market_cap', 'price']])
+
+# Main function to run data analysis
+if __name__ == '__main__':
+    print("Starting cryptocurrency data fetching and analysis...")
+    time.sleep(10)  # Wait for some data to be fetched
+    analyze_data()
