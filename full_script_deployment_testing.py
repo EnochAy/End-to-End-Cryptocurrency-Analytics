@@ -78,6 +78,11 @@ def load_data():
 # Machine Learning - Train a Linear Regression Model for Price Prediction
 def train_price_model():
     df = load_data()
+    
+    if df.empty:
+        print("No data available for training. Skipping model training.")
+        return None, None  # Return None if there's no data
+    
     df['timestamp'] = pd.to_datetime(df['timestamp'])
 
     # Prepare the data for the model
@@ -87,8 +92,16 @@ def train_price_model():
     X = df[['time_since']]
     y = df['price']
 
+    if len(X) == 0 or len(y) == 0:
+        print("Insufficient data for training the model.")
+        return None, None  # Return None if there isn't enough data for training
+
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    if len(X_train) == 0 or len(X_test) == 0:
+        print("Split resulted in empty train or test set. Check data availability.")
+        return None, None
 
     # Scale the features
     scaler = StandardScaler()
@@ -100,6 +113,15 @@ def train_price_model():
     model.fit(X_train_scaled, y_train)
 
     return model, scaler
+
+# Load data and check if it's empty before training
+model, scaler = train_price_model()
+
+if model is not None:
+    print("Model trained successfully.")
+else:
+    print("Model training skipped due to insufficient data.")
+
 
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
