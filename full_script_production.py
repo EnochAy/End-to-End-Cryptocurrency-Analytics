@@ -14,7 +14,11 @@ from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.arima.model import ARIMA
 import xgboost as xgb
 from datetime import datetime
+import threading
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 # Environment Variables (Set API Key Securely)
 api_key = os.getenv('CMC_API_KEY', 'your_api_key_here')
@@ -30,19 +34,18 @@ def init_db():
     try:
         conn = mysql.connector.connect(host='localhost', user='root', password=db_password, database='crypto_db')
         c = conn.cursor()
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS crypto_data (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255),
-                symbol VARCHAR(255),
-                price DECIMAL(18, 8),
-                volume_24h DECIMAL(18, 2),
-                market_cap DECIMAL(18, 2),
-                timestamp TIMESTAMP,
-                UNIQUE(name, timestamp)
-            )
-        ''')
+        c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255),
+                        symbol VARCHAR(255),
+                        price DECIMAL(18, 8),
+                        volume_24h DECIMAL(18, 2),
+                        market_cap DECIMAL(18, 2),
+                        timestamp TIMESTAMP,
+                        UNIQUE(name, timestamp)
+                    )''')
         conn.commit()
+        print("Database initialized.")
     except Exception as e:
         print(f"Error initializing database: {e}")
     finally:
@@ -58,12 +61,11 @@ def fetch_and_store_data():
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         for entry in data['data']:
-            c.execute('''
-                INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE price=VALUES(price), volume_24h=VALUES(volume_24h), market_cap=VALUES(market_cap)
-            ''', (entry['name'], entry['symbol'], entry['quote']['USD']['price'],
-                  entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
+            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp)
+                         VALUES (%s, %s, %s, %s, %s, %s)
+                         ON DUPLICATE KEY UPDATE price=VALUES(price), volume_24h=VALUES(volume_24h), market_cap=VALUES(market_cap)''',
+                      (entry['name'], entry['symbol'], entry['quote']['USD']['price'],
+                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
         conn.commit()
         print("Data fetched and stored successfully.")
     except Exception as e:
@@ -123,17 +125,15 @@ def initialize_models():
         # Feature Engineering
         df = feature_engineering(df)
 
-    # Train ARIMA Model
-    arima_model = train_arima(df)
-    save_model(arima_model, 'arima_model.pkl')
-    if arima_model:
+        # Train ARIMA Model
+        arima_model = train_arima(df)
+        save_model(arima_model, 'arima_model.pkl')
         print("ARIMA model trained successfully.")
 
-    # Train XGBoost Model
-    xgboost_model = train_xgboost(df)
-    save_model(xgboost_model, 'xgboost_model.pkl')
-    if xgboost_model:
-            print("XGBoost model trained successfully.")
+        # Train XGBoost Model
+        xgboost_model = train_xgboost(df)
+        save_model(xgboost_model, 'xgboost_model.pkl')
+        print("XGBoost model trained successfully.")
     else:
         print("No data available for model training.")
 
@@ -181,18 +181,7 @@ def predict_price(selected_crypto):
     return f"ARIMA Predicted price: ${arima_forecast}, XGBoost Predicted price: ${xgboost_forecast}"
 
 # Main Execution
-"""
 if __name__ == '__main__':
-    init_db()
-    fetch_and_store_data()
-    initialize_models()
-    app.run_server(debug=True, port=8050)
-
-"""
-
-if __name__ == '__main__':
-    import threading
-
     def init_and_train():
         init_db()
         fetch_and_store_data()
@@ -202,6 +191,3 @@ if __name__ == '__main__':
     threading.Thread(target=init_and_train).start()
     print("Starting Dash server...")
     app.run_server(debug=True, port=8050)
-
-
-
