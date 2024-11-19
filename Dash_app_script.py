@@ -13,6 +13,10 @@ import dash_bootstrap_components as dbc
 from datetime import datetime
 import requests
 import time
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
@@ -22,66 +26,89 @@ headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'your_api_key_her
 # Cached API data
 api_cache = {'data': None, 'timestamp': None}
 
-# Connect to MySQL and create table if not exists
-def init_db():
+# MySQL connection helper function
+def get_db_connection():
     try:
-        conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        name VARCHAR(255),
-                        symbol VARCHAR(255),
-                        price DECIMAL(18, 8),
-                        volume_24h DECIMAL(18, 2),
-                        market_cap DECIMAL(18, 2),
-                        timestamp TIMESTAMP)''')
-        conn.commit()
-    except Exception as e:
-        print(f"Error initializing database: {e}")
-    finally:
-        conn.close()
+        conn = mysql.connector.connect(
+            host='localhost', user='root', password='EnochAy@88', database='crypto_db'
+        )
+        return conn
+    except mysql.connector.Error as err:
+        logging.error(f"Database connection error: {err}")
+        return None
+
+# Initialize database
+def init_db():
+    conn = get_db_connection()
+    if conn:
+        try:
+            c = conn.cursor()
+            c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            name VARCHAR(255),
+                            symbol VARCHAR(255),
+                            price DECIMAL(18, 8),
+                            volume_24h DECIMAL(18, 2),
+                            market_cap DECIMAL(18, 2),
+                            timestamp TIMESTAMP)''')
+            conn.commit()
+        except mysql.connector.Error as e:
+            logging.error(f"Database initialization error: {e}")
+        finally:
+            conn.close()
 
 # Fetch and cache data from API
 def fetch_and_store_data():
     global api_cache
+    conn = get_db_connection()
+    if not conn:
+        return
+    
     try:
         current_time = time.time()
         if api_cache['data'] and (current_time - api_cache['timestamp']) < 600:
-            print("Using cached API data.")
+            logging.info("Using cached API data.")
             return
 
-        conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
-        c = conn.cursor()
         response = requests.get(url, headers=headers, params=parameters)
+        response.raise_for_status()
         data = response.json()
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+        c = conn.cursor()
         for entry in data['data']:
             c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp)
                          VALUES (%s, %s, %s, %s, %s, %s)''',
                       (entry['name'], entry['symbol'], entry['quote']['USD']['price'],
                        entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
         conn.commit()
+
         api_cache = {'data': data, 'timestamp': current_time}
-        print("Data fetched and stored successfully.")
-    except Exception as e:
-        print(f"Error fetching data: {e}")
+        logging.info("Data fetched and stored successfully.")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching data from API: {e}")
+    except mysql.connector.Error as e:
+        logging.error(f"Error storing data in database: {e}")
     finally:
         conn.close()
 
-# Load data
+# Load data from database
 def load_data():
-    try:
-        conn = mysql.connector.connect(host='localhost', user='root', password='EnochAy@88', database='crypto_db')
-        query = "SELECT * FROM crypto_data"
-        df = pd.read_sql(query, conn)
-        conn.close()
-        return df
-    except Exception as e:
-        print(f"Error loading data: {e}")
+    conn = get_db_connection()
+    if not conn:
         return pd.DataFrame()
 
-# Feature Engineering
+    try:
+        query = "SELECT * FROM crypto_data"
+        df = pd.read_sql(query, conn)
+        return df
+    except mysql.connector.Error as e:
+        logging.error(f"Error loading data: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+# Feature engineering for model inputs
 def feature_engineering(df):
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['price_change_24h'] = df['price'].pct_change().fillna(0)
@@ -96,7 +123,7 @@ def train_arima(df):
         arima_model = model.fit()
         return arima_model
     except Exception as e:
-        print(f"Error training ARIMA model: {e}")
+        logging.error(f"Error training ARIMA model: {e}")
         return None
 
 # Train XGBoost model
@@ -110,14 +137,14 @@ def train_xgboost(df):
         model.fit(X_train, y_train)
         return model
     except Exception as e:
-        print(f"Error training XGBoost model: {e}")
+        logging.error(f"Error training XGBoost model: {e}")
         return None
 
 # Pre-train models
 def initialize_models():
     df = load_data()
     if df.empty:
-        print("No data available for model training.")
+        logging.warning("No data available for model training.")
         return None, None
     df = feature_engineering(df)
     arima_model = train_arima(df)
@@ -185,6 +212,5 @@ def predict_price(selected_crypto):
 # Run the app
 if __name__ == '__main__':
     init_db()
-    fetch_and_store_data()
+    fetch_and_store_data()  # Fetch initial data
     app.run_server(debug=True)
-    
