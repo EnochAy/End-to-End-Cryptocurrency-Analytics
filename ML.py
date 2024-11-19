@@ -1,63 +1,159 @@
-"""
-Feature Engineering (for ML)
-Create new features that might improve machine learning models.
-
-Steps:
-
-Derive percentage price changes, 7-day moving averages, or volume-to-market-cap ratios.
-Normalize or standardize the features
-"""
-
-
-"""
-Step 3: Machine Learning Integration (Price Prediction)
-Now, let's build a simple Linear Regression model using the historical data to predict future prices of cryptocurrencies.
-"""
+import mysql.connector
+import pandas as pd
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import numpy as np
+from dash import Dash, html, dcc, Input, Output
+import warnings
 
-# Load data for ML training
-df = load_data()
-df['timestamp'] = pd.to_datetime(df['timestamp'])
+warnings.filterwarnings("ignore", category=FutureWarning)
 
-# Prepare the data for the model
-df['time_since'] = (df['timestamp'] - df['timestamp'].min()).dt.total_seconds()  # Convert time to numerical
+# Connect to MySQL Database
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="EnochAy@88",
+    database="crypto_db"
+)
 
-# Feature and target variable
-X = df[['time_since']]
-y = df['price']
+# Function to load data from MySQL database
+def load_data():
+    query = "SELECT * FROM crypto_data"
+    df = pd.read_sql(query, conn)
+    return df
 
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Feature Engineering: Create new features for ML
+def feature_engineering(df):
+    # Ensure timestamps are parsed correctly
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Calculate percentage price change
+    df['price_change_pct'] = df['price'].pct_change() * 100
+    
+    # Calculate 7-day moving average
+    df['price_ma_7d'] = df['price'].rolling(window=7, min_periods=1).mean()
+    
+    # Volume-to-market-cap ratio
+    df['vol_to_market_cap'] = df['volume_24h'] / df['market_cap']
+    
+    # Time since the earliest record (for numerical modeling)
+    df['time_since'] = (df['timestamp'] - df['timestamp'].min()).dt.total_seconds()
+    
+    # Drop rows with NaN values introduced by calculations
+    df.dropna(inplace=True)
+    
+    return df
 
-# Scale the features
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+# Machine Learning: Train the Linear Regression model
+def train_price_model():
+    # Load and prepare the data
+    df = load_data()
+    
+    # Perform feature engineering
+    df = feature_engineering(df)
+    
+    if df.empty:
+        print("No data available for training. Skipping model training.")
+        return None, None
+    
+    # Feature and target variable
+    X = df[['time_since', 'price_change_pct', 'price_ma_7d', 'vol_to_market_cap']]
+    y = df['price']
+    
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    if len(X_train) == 0 or len(X_test) == 0:
+        print("Split resulted in empty train or test set. Check data availability.")
+        return None, None
+    
+    # Scale the features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Train the Linear Regression model
+    model = LinearRegression()
+    model.fit(X_train_scaled, y_train)
+    
+    print("Model trained successfully.")
+    return model, scaler
 
-# Train the Linear Regression model
-model = LinearRegression()
-model.fit(X_train_scaled, y_train)
+# Initialize Dash app
+app = Dash(__name__)
 
-# Make predictions
-y_pred = model.predict(X_test_scaled)
+# Layout for the dashboard
+app.layout = html.Div([
+    html.H1("Cryptocurrency Price Prediction Dashboard"),
+    dcc.Dropdown(
+        id='crypto-dropdown',
+        options=[],  # Dynamically populated
+        placeholder="Select a cryptocurrency"
+    ),
+    html.Div(id='prediction-output', style={'margin-top': '20px'}),
+    dcc.Graph(id='price-graph', style={'margin-top': '20px'}),
+])
 
-# Dashboard integration: Predict future prices
+# Train the model and initialize scaler
+model, scaler = train_price_model()
+
+# Populate dropdown options dynamically
 @app.callback(
-    Output('prediction-output', 'children'),
+    Output('crypto-dropdown', 'options'),
+    Input('crypto-dropdown', 'value')
+)
+def update_dropdown(_):
+    df = load_data()
+    options = [{'label': name, 'value': name} for name in df['name'].unique()]
+    return options
+
+# Predict future prices and update graph
+@app.callback(
+    [Output('prediction-output', 'children'),
+     Output('price-graph', 'figure')],
     [Input('crypto-dropdown', 'value')]
 )
-def predict_price(selected_crypto):
+def predict_and_display(selected_crypto):
+    if not selected_crypto:
+        return "Please select a cryptocurrency.", {}
+
     df = load_data()
     df = df[df['name'] == selected_crypto]
     
-    # Use the trained model for prediction (adjust this for better models)
-    last_time = (pd.to_datetime(df['timestamp'].max()) - df['timestamp'].min()).total_seconds()
-    future_time = last_time + 3600  # Predict one hour into the future
-    future_time_scaled = scaler.transform(np.array([[future_time]]))
+    if df.empty:
+        return f"No data available for {selected_crypto}.", {}
+
+    # Perform feature engineering
+    df = feature_engineering(df)
     
-    predicted_price = model.predict(future_time_scaled)[0]
+    # Predict future price (1 hour ahead)
+    last_time = df['time_since'].max()
+    future_time = last_time + 3600  # Predict 1 hour into the future
+    last_row_features = df[['price_change_pct', 'price_ma_7d', 'vol_to_market_cap']].iloc[-1].values
+    future_data = np.array([[future_time] + list(last_row_features)])
     
-    return f"Predicted price for {selected_crypto} in 1 hour: ${predicted_price:.2f}"
+    try:
+        future_data_scaled = scaler.transform(future_data)
+        predicted_price = model.predict(future_data_scaled)[0]
+        
+        # Create a graph of historical prices
+        fig = {
+            'data': [
+                {'x': df['timestamp'], 'y': df['price'], 'type': 'line', 'name': selected_crypto},
+            ],
+            'layout': {
+                'title': f"Historical Prices for {selected_crypto}",
+                'xaxis': {'title': 'Timestamp'},
+                'yaxis': {'title': 'Price (USD)'}
+            }
+        }
+        
+        return f"Predicted price for {selected_crypto} in 1 hour: ${predicted_price:.2f}", fig
+    except Exception as e:
+        print(f"Error in prediction: {e}")
+        return "Prediction error. Please check the logs.", {}
+
+# Run the Dash app
+if __name__ == '__main__':
+    app.run_server(debug=True)
