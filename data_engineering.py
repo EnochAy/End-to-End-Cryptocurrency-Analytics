@@ -1,32 +1,3 @@
-"""
-1. Data Storage (Data Engineering)
-First, store the scraped data in a structured format. This will be useful for analysis, modeling, 
-and future reference.
-
-Steps:
-
-Option 1: Store as a CSV or JSON File Save the fetched data locally as a CSV or JSON file.
-
-
-
-import csv
-
-# Save as CSV
-with open('crypto_data.csv', 'w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(data['data'][0].keys())  # Headers
-    for entry in data['data']:
-        writer.writerow(entry.values())
-
-
-
-Option 2: Store in a Database (MySQL, PostgreSQL, etc.)
-
-Create a database table to store the cryptocurrency data into MySQL to insert the data into the database.
-
-For storing in MySQL:
-"""
-
 import mysql.connector
 import requests
 import time
@@ -44,51 +15,87 @@ headers = {
     'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
 }
 
-# Connect to MySQL Database (historical data)
-conn = mysql.connector.connect(
-    host="localhost",          # Your MySQL host (e.g., localhost or IP)
-    user="root",       # Your MySQL username
-    password="EnochAy@88",   # Your MySQL password
-    database="crypto_db"        # Your database name
-)
+# MySQL Database Configuration
+DB_CONFIG = {
+    "host": "localhost",          # Your MySQL host (e.g., localhost or IP)
+    "user": "root",               # Your MySQL username
+    "password": "EnochAy@88",     # Your MySQL password
+    "database": "crypto_db"       # Your database name
+}
+
+# Connect to MySQL Database
+def connect_to_database(config):
+    try:
+        conn = mysql.connector.connect(**config)
+        print("Database connection established.")
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        exit(1)
+
+conn = connect_to_database(DB_CONFIG)
 c = conn.cursor()
 
-# Drop table if it exists (to recreate with correct schema)
-c.execute('DROP TABLE IF EXISTS crypto_data')
+# Initialize database table
+def initialize_database():
+    c.execute('DROP TABLE IF EXISTS crypto_data')
+    c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255),
+        symbol VARCHAR(255),
+        price DECIMAL(18, 8),
+        volume_24h DECIMAL(18, 2),
+        market_cap DECIMAL(18, 2),
+        timestamp TIMESTAMP
+    )''')
+    conn.commit()
+    print("Database table initialized.")
 
-# Create table with the 'timestamp' column
-c.execute('''CREATE TABLE IF NOT EXISTS crypto_data (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    symbol VARCHAR(255),
-    price DECIMAL(18, 8),
-    volume_24h DECIMAL(18, 2),
-    market_cap DECIMAL(18, 2),
-    timestamp TIMESTAMP
-)''')
-conn.commit()
+initialize_database()
 
-# Function to fetch and store data in the database
-def fetch_and_store_data():
+# Function to fetch data from CoinMarketCap API
+def fetch_data_from_api():
     try:
         response = requests.get(url, headers=headers, params=parameters)
-        data = response.json()
-        
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add current timestamp
-        
-        for entry in data['data']:
-            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) 
-                         VALUES (%s, %s, %s, %s, %s, %s)''',
-                      (entry['name'], entry['symbol'], entry['quote']['USD']['price'], 
-                       entry['quote']['USD']['volume_24h'], entry['quote']['USD']['market_cap'], timestamp))
-        
-        conn.commit()
-        print(f"Data successfully stored at {timestamp}")
-
+        response.raise_for_status()  # Raise HTTPError for bad responses
+        return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data from CoinMarketCap API: {e}")
+        return None
 
-# Fetch data every 10 minutes for real-time updates
-while True:
-    fetch_and_store_data()
-    time.sleep(3600)  # Sleep for 1 hour
+# Function to store data in the MySQL database
+def store_data_in_database(data):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Current timestamp
+    for entry in data['data']:
+        try:
+            c.execute('''INSERT INTO crypto_data (name, symbol, price, volume_24h, market_cap, timestamp) 
+                         VALUES (%s, %s, %s, %s, %s, %s)''',
+                      (entry['name'], entry['symbol'], 
+                       entry['quote']['USD']['price'], 
+                       entry['quote']['USD']['volume_24h'], 
+                       entry['quote']['USD']['market_cap'], 
+                       timestamp))
+        except Exception as e:
+            print(f"Error inserting data for {entry['name']}: {e}")
+    conn.commit()
+    print(f"Data successfully stored at {timestamp}")
+
+# Function to run the data fetch-and-store process
+def fetch_and_store_data():
+    print("Fetching data from CoinMarketCap API...")
+    data = fetch_data_from_api()
+    if data:
+        print("Storing data into the database...")
+        store_data_in_database(data)
+
+# Real-time data fetching loop (interval: 1 hour)
+try:
+    print("Starting real-time data fetching...")
+    while True:
+        fetch_and_store_data()
+        print("Sleeping for 1 hour...")
+        time.sleep(3600)  # 1-hour interval
+except KeyboardInterrupt:
+    print("Process interrupted. Closing database connection...")
+    conn.close()
+    print("Database connection closed.")
