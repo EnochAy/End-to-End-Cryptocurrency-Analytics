@@ -5,22 +5,26 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from dash import Dash, html, dcc, Input, Output
+import pickle
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Connect to MySQL Database
-conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="EnochAy@88",
-    database="crypto_db"
-)
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="EnochAy@88",
+        database="crypto_db"
+    )
 
 # Function to load data from MySQL database
 def load_data():
+    conn = get_db_connection()
     query = "SELECT * FROM crypto_data"
     df = pd.read_sql(query, conn)
+    conn.close()
     return df
 
 # Feature Engineering: Create new features for ML
@@ -45,7 +49,22 @@ def feature_engineering(df):
     
     return df
 
-# Machine Learning: Train the Linear Regression model
+# Save model and scaler for later use
+def save_model(model, scaler):
+    with open('price_model.pkl', 'wb') as model_file:
+        pickle.dump(model, model_file)
+    with open('scaler.pkl', 'wb') as scaler_file:
+        pickle.dump(scaler, scaler_file)
+
+# Load saved model and scaler
+def load_model():
+    with open('price_model.pkl', 'rb') as model_file:
+        model = pickle.load(model_file)
+    with open('scaler.pkl', 'rb') as scaler_file:
+        scaler = pickle.load(scaler_file)
+    return model, scaler
+
+# Train the Linear Regression model
 def train_price_model():
     # Load and prepare the data
     df = load_data()
@@ -64,10 +83,6 @@ def train_price_model():
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    if len(X_train) == 0 or len(X_test) == 0:
-        print("Split resulted in empty train or test set. Check data availability.")
-        return None, None
-    
     # Scale the features
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -78,6 +93,10 @@ def train_price_model():
     model.fit(X_train_scaled, y_train)
     
     print("Model trained successfully.")
+    
+    # Save model and scaler
+    save_model(model, scaler)
+    
     return model, scaler
 
 # Initialize Dash app
@@ -95,8 +114,13 @@ app.layout = html.Div([
     dcc.Graph(id='price-graph', style={'margin-top': '20px'}),
 ])
 
-# Train the model and initialize scaler
-model, scaler = train_price_model()
+# Check if model and scaler exist, otherwise train new model
+try:
+    model, scaler = load_model()
+    print("Model and scaler loaded.")
+except FileNotFoundError:
+    model, scaler = train_price_model()
+    print("Model trained and saved.")
 
 # Populate dropdown options dynamically
 @app.callback(
