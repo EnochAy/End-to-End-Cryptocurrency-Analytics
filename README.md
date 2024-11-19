@@ -78,7 +78,7 @@ headers = {
 
 # Database Setup
 
-By default, this project uses SQLite to store the cryptocurrency data. You can modify the database settings to use a more robust database like MySQL or PostgreSQL if needed.
+This project uses MySQL to store the cryptocurrency data. You can modify the database settings to use PostgreSQL or any other database if needed.
 
 To initialize the SQLite database, no manual setup is required. The Python script automatically creates a table and stores data in the crypto_data.db file.
 
@@ -88,7 +88,7 @@ To initialize the SQLite database, no manual setup is required. The Python scrip
 python full_script.py
 The script collects data every 10 minutes, storing cryptocurrency data and timestamps for historical tracking.
 
-2. View the Data: The data is stored in an SQLite database (crypto_data.db). You can query it manually using MySQL, or you can visualize it using Python libraries like pandas or dash.
+2. View the Data: The data is stored in an MySQL database (crypto_data.db). It can be queried manually using MySQL, visualized using Python libraries like pandas or dash.
 
 3. Machine Learning: You can extend the pipeline by training machine learning models (e.g., price prediction, trend classification). Modify the ML section of the code and integrate your models.
 
@@ -99,4 +99,4 @@ The script collects data every 10 minutes, storing cryptocurrency data and times
 1. Historical Data Storage: Implement a more robust data pipeline for storing and retrieving historical cryptocurrency data.
 2. Advanced Machine Learning Models: Integrate more complex models (e.g., LSTM, ARIMA) to enhance prediction accuracy.
 3. Live Streaming Dashboard: Incorporate streaming data visualization for real-time insights using Plotly Dash or Power BI.
-4. Deploy on the Cloud: Host the application and database on cloud platforms like AWS, GCP, or Azure for scalability.
+4. Deploy on the Cloud: There is a plan to host the application and database on cloud platforms like AWS, GCP, or Azure for scalability.
