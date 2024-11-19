@@ -78,7 +78,7 @@ headers = {
 
 # Database Setup
 
-This project uses MySQL to store the cryptocurrency data. You can modify the database settings to use PostgreSQL or any other database if needed.
+This project uses MySQL to store the cryptocurrency data. The database settings can be modified to use PostgreSQL or any other database if needed.
 
 To initialize the SQLite database, no manual setup is required. The Python script automatically creates a table and stores data in the crypto_data.db file.
 
