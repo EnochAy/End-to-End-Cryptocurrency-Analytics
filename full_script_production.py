@@ -21,13 +21,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Environment Variables (Set API Key Securely)
-api_key = os.getenv('CMC_API_KEY', 'your_api_key_here')
+api_key = os.getenv('CMC_API_KEY', 'b54bcf4d-1bca-4e8e-9a24-22ff2c3d462c')
 db_password = os.getenv('DB_PASSWORD', 'your_db_password_here')
 
 # API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
-headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': api_key}
+headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'b54bcf4d-1bca-4e8e-9a24-22ff2c3d462c'}
 
 # Database Initialization
 def init_db():

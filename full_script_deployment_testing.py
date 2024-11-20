@@ -37,7 +37,7 @@ engine = create_engine(DATABASE_URI)
 # CoinMarketCap API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '100', 'convert': 'USD'}
-headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': API_KEY}
+headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'b54bcf4d-1bca-4e8e-9a24-22ff2c3d462c'}
 
 # Database setup (ensure the table exists without dropping it)
 def setup_database():
