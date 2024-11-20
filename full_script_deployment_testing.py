@@ -19,8 +19,10 @@ import os
 import joblib
 from dotenv import load_dotenv
 
-# Load environment variables
+
+# Load environment variables from the .env file
 load_dotenv()
+
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,7 +31,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 API_KEY = os.getenv('CMC_API_KEY')
 if not API_KEY:
     logging.error("API key is missing. Please set it in your .env file.")
-    exit(1)
+else:
+    logging.info(f"API key loaded successfully: {API_KEY[:5]}******")
+
+DB_HOST = os.getenv("MYSQL_HOST")
+if not DB_HOST:
+    logging.error("Database host is missing.")
+else:
+    logging.info(f"Database host: {DB_HOST}")
 
 DATABASE_URI = os.getenv('DATABASE_URI', 'mysql+mysqlconnector://root:password@localhost/crypto_db')
 engine = create_engine(DATABASE_URI)
