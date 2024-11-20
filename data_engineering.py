@@ -12,7 +12,7 @@ parameters = {
 }
 headers = {
     'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
+    'X-CMC_PRO_API_KEY': 'url'  # Replace with your API key
 }
 
 # MySQL Database Configuration

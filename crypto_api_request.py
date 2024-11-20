@@ -10,7 +10,7 @@ url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
 headers = {
     'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': 'your_api_key_here'  # Replace with your API key
+    'X-CMC_PRO_API_KEY': 'CMC_API_KEY'  # Replace with your API key
 }
 
 # Connect to MySQL Database
@@ -65,6 +65,9 @@ def fetch_and_store_data():
             else:
                 print("Max retries reached. Skipping this fetch.")
 
+
+
+
 # Function to periodically fetch data in a separate thread
 def fetch_data_periodically():
     while True:
@@ -101,3 +104,10 @@ if __name__ == '__main__':
     print("Starting cryptocurrency data fetching and analysis...")
     time.sleep(10)  # Wait for some data to be fetched
     analyze_data()
+
+
+#logging.info("Fetching and storing data...")
+fetch_and_store_data()
+
+
+
