@@ -5,6 +5,19 @@ import threading
 import pandas as pd
 from datetime import datetime
 
+
+
+from sqlalchemy import create_engine
+
+# Create SQLAlchemy engine
+engine = create_engine("mysql+mysqlconnector://root:EnochAy@88@localhost/crypto_db")
+
+# Load data using pandas
+def load_data():
+    query = "SELECT * FROM crypto_data"
+    df = pd.read_sql(query, engine)
+    return df
+
 # CoinMarketCap API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
