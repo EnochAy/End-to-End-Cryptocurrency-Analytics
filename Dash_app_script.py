@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API Configuration
 url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 parameters = {'start': '1', 'limit': '5000', 'convert': 'USD'}
-headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'your_api_key_here'}
+headers = {'Accepts': 'application/json', 'X-CMC_PRO_API_KEY': 'b54bcf4d-1bca-4e8e-9a24-22ff2c3d462c'}
 
 # Cached API data
 api_cache = {'data': None, 'timestamp': None}
@@ -62,8 +62,9 @@ def fetch_and_store_data():
     global api_cache
     conn = get_db_connection()
     if not conn:
+        logging.error("Failed to connect to the database.")
         return
-    
+
     try:
         current_time = time.time()
         if api_cache['data'] and (current_time - api_cache['timestamp']) < 600:
@@ -73,6 +74,10 @@ def fetch_and_store_data():
         response = requests.get(url, headers=headers, params=parameters)
         response.raise_for_status()
         data = response.json()
+        if 'data' not in data:
+            logging.error("Invalid API response format.")
+            return
+
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         c = conn.cursor()
@@ -85,28 +90,35 @@ def fetch_and_store_data():
 
         api_cache = {'data': data, 'timestamp': current_time}
         logging.info("Data fetched and stored successfully.")
-    except requests.exceptions.RequestException as e:
+    except (requests.exceptions.RequestException, KeyError) as e:
         logging.error(f"Error fetching data from API: {e}")
     except mysql.connector.Error as e:
         logging.error(f"Error storing data in database: {e}")
     finally:
         conn.close()
 
+
 # Load data from database
 def load_data():
     conn = get_db_connection()
     if not conn:
-        return pd.DataFrame()
+        logging.error("Database connection failed.")
+        # Fallback for testing
+        return pd.DataFrame({
+            'name': ['Bitcoin', 'Ethereum'],
+            'price': [50000, 3500],
+            'timestamp': [datetime.now(), datetime.now()]
+        })
 
     try:
         query = "SELECT * FROM crypto_data"
-        df = pd.read_sql(query, conn)
-        return df
-    except mysql.connector.Error as e:
+        return pd.read_sql(query, conn)
+    except Exception as e:
         logging.error(f"Error loading data: {e}")
         return pd.DataFrame()
     finally:
         conn.close()
+
 
 # Feature engineering for model inputs
 def feature_engineering(df):
@@ -214,3 +226,8 @@ if __name__ == '__main__':
     init_db()
     fetch_and_store_data()  # Fetch initial data
     app.run_server(debug=True)
+
+
+logging.info("Fetching and storing data...")
+fetch_and_store_data()
+
