@@ -1,102 +1,137 @@
-
 # End-to-End Cryptocurrency Analytics
 
-This project is an end-to-end data analytics pipeline for cryptocurrency data, leveraging the CoinMarketCap API to retrieve real-time cryptocurrency data, process and store it in a database, and provide analytical insights using machine learning models and a data visualization dashboard.
+## Problem Statement
+Cryptocurrency markets are highly volatile and complex, making it challenging for investors and traders to make informed decisions. This project aims to solve the problem of accessing actionable insights by providing a pipeline that collects real-time market data, stores it for historical analysis, applies machine learning for price predictions, and visualizes trends through an interactive dashboard. The goal is to empower users with data-driven insights to navigate the crypto market effectively.
 
-# Table of Contents
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [Features](#features)
+3. [Technologies Used](#technologies-used)
+4. [Architecture](#architecture)
+5. [Project Structure](#project-structure)
+6. [Setup Instructions](#setup-instructions)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [API Setup](#api-setup)
+    - [Database Setup](#database-setup)
+7. [Usage](#usage)
+8. [Future Enhancements](#future-enhancements)
+9. [License](#license)
 
-1. Project Overview
-2. Features
-3. Technologies Used
-4. Setup Instructions
-    - Prerequisites
-    - Installation
-    - API Setup
-    - Database Setup
-5. Usage
-6. Future Enhancements
-7. License
+## Project Overview
+This project builds an end-to-end analytics pipeline for cryptocurrency data, fetching real-time data from the CoinMarketCap API, storing it in a MySQL database, performing feature engineering, training machine learning models (ARIMA and XGBoost) for price prediction, and visualizing insights through a Plotly Dash dashboard.
 
-# Project Overview
+## Features
+- Fetches real-time cryptocurrency data from CoinMarketCap API.
+- Stores data in a MySQL database for historical and real-time analysis.
+- Implements feature engineering for advanced analytics (e.g., price change, moving averages).
+- Trains ARIMA and XGBoost models for price prediction.
+- Provides an interactive dashboard with real-time price trends and predictions.
+- Logs operations for debugging and monitoring.
 
-This project provides a comprehensive analytics pipeline for analyzing and visualizing cryptocurrency market trends. The key components of this pipeline include:
+## Technologies Used
+- **Python**: General-purpose language for data processing and scripting.
+- **CoinMarketCap API**: Provides reliable, real-time cryptocurrency market data.
+- **MySQL**: Structured database for efficient storage and querying of time-series data.
+- **Pandas**: Handles data manipulation and feature engineering.
+- **Scikit-learn, Statsmodels, XGBoost**: Enable machine learning for price prediction.
+- **Plotly Dash**: Creates an interactive, web-based dashboard for visualization.
+- **Logging**: Tracks operations for debugging and monitoring.
+- **Dotenv**: Secures sensitive credentials (API key, database password).
 
-1. Data Collection: Fetches real-time cryptocurrency data from the CoinMarketCap API.
-2. Data Storage: Stores both real-time and historical data in a local MySQL database, allowing for longitudinal analysis.
-3. Machine Learning: Integrates machine learning models to predict future cryptocurrency prices and market movements.
-4. Dashboard: Builds a dynamic dashboard using Plotly Dash. Either Power BI or Tableau will be used later to visualize real-time trends, predictions, and market insights.
+## Architecture
+```
+[CoinMarketCap API] --> [Data Ingestion: fetch_data.py]
+                                  |
+                                  v
+[MySQL Database: crypto_db] <-- [Database: database.py]
+                                  |
+                                  v
+[Feature Engineering: transform_data.py]
+                                  |
+                                  v
+[Model Training: train_models.py]
+                                  |
+                                  v
+[Dash Dashboard: dashboard.py]
+```
 
-# Features
+## Project Structure
+```
+End-to-End-Cryptocurrency-Analytics/
+├── data_ingestion/
+│   └── fetch_data.py           # Fetches and stores API data
+├── data_transformation/
+│   └── transform_data.py       # Feature engineering
+├── modeling/
+│   └── train_models.py         # ARIMA and XGBoost training
+├── visualization/
+│   └── dashboard.py            # Dash dashboard
+├── utils/
+│   └── database.py             # Database initialization
+├── models/
+│   ├── arima_model.pkl         # Saved ARIMA model
+│   └── xgboost_model.pkl       # Saved XGBoost model
+├── .env                        # Environment variables (not tracked)
+├── .gitignore                  # Git ignore file
+├── requirements.txt            # Dependencies
+├── README.md                   # Documentation
+└── main.py                     # Orchestrates pipeline
+```
 
-1. Fetches up-to-date cryptocurrency data from CoinMarketCap API.
-2. Stores real-time and historical data in a local MySQL database.
-3. Implements a data pipeline to ensure continuous data collection and storage.
-4. Applies machine learning models for price prediction and market analysis.
-5. Provides real-time data visualization and interactive dashboard.
-6. Easy-to-configure scripts for users to run in their local environment.
+## Setup Instructions
 
-# Technologies Used
+### Prerequisites
+- Python 3.10+ (verified with your `python --version` output: 3.10.4).
+- MySQL Server installed and running.
+- CoinMarketCap API key (sign up at [CoinMarketCap Developer Portal](https://coinmarketcap.com/api/)).
 
-1. Languages: Python
-2. APIs: CoinMarketCap API
-3. Libraries:
-    - requests for API communication
-    - sqlite3 for database storage
-    - scikit-learn for machine learning models
-    - plotly or Dash for interactive data visualization
-    - pandas for data manipulation
-4. Database: MySQL (can be expanded to use PostgreSQL or SQLite later)
-5. Visualization: Plotly, Dash (Power BI/Tableau later) for dashboard creation
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/EnochAy/End-to-End-Cryptocurrency-Analytics.git
+   cd End-to-End-Cryptocurrency-Analytics
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate  # On Windows
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-# Setup Instructions
+### API Setup
+1. Sign up for a CoinMarketCap API key at [CoinMarketCap Developer Portal](https://coinmarketcap.com/api/).
+2. Create a `.env` file in the project root:
+   ```plaintext
+   CMC_API_KEY=your_api_key_here
+   DB_PASSWORD=your_mysql_password_here
+   ```
+3. Ensure the `.env` file is not committed (covered by `.gitignore`).
 
-1. Prerequisites
+### Database Setup
+1. Install MySQL if not already installed (download from [mysql.com](https://dev.mysql.com/downloads/installer/)).
+2. Create a database named `crypto_db`:
+   ```sql
+   CREATE DATABASE crypto_db;
+   ```
+3. The `main.py` script automatically initializes the `crypto_data` table.
 
-- Make sure you have Python 3.x installed. You’ll also need to install the following Python libraries:
-pip install requests sqlite3 pandas scikit-learn plotly dash
+## Usage
+1. Run the main script to start the pipeline and dashboard:
+   ```bash
+   python main.py
+   ```
+2. Access the dashboard at `http://localhost:8050`.
+3. View logs in `crypto_analytics.log` for debugging.
 
-# Installation
+## Future Enhancements
+- Add historical data storage with a robust ETL pipeline.
+- Integrate advanced models like LSTM for better predictions.
+- Deploy the dashboard on a cloud platform (e.g., AWS, GCP).
+- Expand visualization options with Power BI or Tableau.
 
-1. Clone this repository:
-git clonehttps://github.com/EnochAy/End-to-End-Cryptocurrency-Analytics.git
-cd End-to-End-Cryptocurrency-Analytics
-
-2. Install the required libraries:
-pip install -r requirements.txt
-
-# API Setup
-
-1. Sign up for a CoinMarketCap API Key:
-    - Go to the CoinMarketCap Developer Portal.
-    - Sign up and generate an API key.
-2. Add your API Key to the Script:
-Replace the placeholder your_api_key_here in the headers of the Python script with your actual API key.
-headers = {
-    'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': 'your_api_key_here',  # Add your API key here
-}
-
-# Database Setup
-
-This project uses MySQL to store the cryptocurrency data. The database settings can be modified to use PostgreSQL or any other database if needed.
-
-To initialize the SQLite database, no manual setup is required. The Python script automatically creates a table and stores data in the crypto_data.db file.
-
-# Usage
-
-1. Run the Data Pipeline: The following script fetches real-time data from CoinMarketCap and stores it in the MySQL database.
-python full_script.py
-The script collects data every 10 minutes, storing cryptocurrency data and timestamps for historical tracking.
-
-2. View the Data: The data is stored in an MySQL database (crypto_data.db). It can be queried manually using MySQL, visualized using Python libraries like pandas or dash.
-
-3. Machine Learning: You can extend the pipeline by training machine learning models (e.g., price prediction, trend classification). Modify the ML section of the code and integrate your models.
-
-4. Visualize the Data: If you have Plotly Dash or a visualization tool like Power BI/Tableau, use the stored data to create dynamic dashboards.
-
-# Future Enhancements
-
-1. Historical Data Storage: Implement a more robust data pipeline for storing and retrieving historical cryptocurrency data.
-2. Advanced Machine Learning Models: Integrate more complex models (e.g., LSTM, ARIMA) to enhance prediction accuracy.
-3. Live Streaming Dashboard: Incorporate streaming data visualization for real-time insights using Plotly Dash or Power BI.
-4. Deploy on the Cloud: There is a plan to host the application and database on cloud platforms like AWS, GCP, or Azure for scalability.
+## License
+MIT License
