@@ -1,0 +1,4 @@
+2025-06-27 16:03:48,076 - INFO - Loading environment variables from .env file
+2025-06-27 16:03:48,076 - ERROR - Missing CMC_API_KEY or DB_PASSWORD in .env file
+2025-06-27 16:06:09,989 - INFO - Loading environment variables from .env file
+2025-06-27 16:06:09,989 - ERROR - Missing CMC_API_KEY or DB_PASSWORD in .env file

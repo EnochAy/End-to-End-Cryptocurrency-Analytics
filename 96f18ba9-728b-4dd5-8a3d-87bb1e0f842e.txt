@@ -1,0 +1,2 @@
+CMC_API_KEY=your_actual_api_key_here
+DB_PASSWORD=your_actual_db_password_here
