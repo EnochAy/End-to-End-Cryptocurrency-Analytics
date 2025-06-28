@@ -35,9 +35,10 @@ This project builds an end-to-end analytics pipeline for cryptocurrency data, fe
 - **MySQL**: Structured database for efficient storage and querying of time-series data.
 - **Pandas**: Handles data manipulation and feature engineering.
 - **Scikit-learn, Statsmodels, XGBoost**: Enable machine learning for price prediction.
-- **Plotly Dash**: Creates an interactive, web-based dashboard for visualization.
+- **Plotly Dash**: Creates an interactive, web-based dashboard for visualization in pure Python—ideal for quickly deploying ML results visually.
 - **Logging**: Tracks operations for debugging and monitoring.
 - **Dotenv**: Secures sensitive credentials (API key, database password).
+- **ARIMA/XGBoost**: Combines traditional time series with modern ML for robust short-term crypto price forecasting.
 
 ## Architecture
 ```
